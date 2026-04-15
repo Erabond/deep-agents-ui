@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
+import { getConfig } from "@/lib/config";
 import { useQueryState } from "nuqs";
 
 export type StateType = {
@@ -36,6 +37,7 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const uid = getConfig()?.uid;
 
   const stream = useStream<StateType>({
     assistantId: activeAssistant?.assistant_id || "",
@@ -62,7 +64,11 @@ export function useChat({
           optimisticValues: (prev) => ({
             messages: [...(prev.messages ?? []), newMessage],
           }),
-          config: { ...(activeAssistant?.config ?? {}), recursion_limit: 100 },
+          config: {
+            ...(activeAssistant?.config ?? {}),
+            recursion_limit: 100,
+            configurable: { ...(activeAssistant?.config?.configurable ?? {}), ...(uid ? { uid } : {}) },
+          },
         }
       );
       // Update thread list immediately when sending a message
@@ -83,7 +89,10 @@ export function useChat({
           ...(optimisticMessages
             ? { optimisticValues: { messages: optimisticMessages } }
             : {}),
-          config: activeAssistant?.config,
+          config: {
+            ...(activeAssistant?.config ?? {}),
+            configurable: { ...(activeAssistant?.config?.configurable ?? {}), ...(uid ? { uid } : {}) },
+          },
           checkpoint: checkpoint,
           ...(isRerunningSubagent
             ? { interruptAfter: ["tools"] }
@@ -92,7 +101,13 @@ export function useChat({
       } else {
         stream.submit(
           { messages },
-          { config: activeAssistant?.config, interruptBefore: ["tools"] }
+          {
+            config: {
+              ...(activeAssistant?.config ?? {}),
+              configurable: { ...(activeAssistant?.config?.configurable ?? {}), ...(uid ? { uid } : {}) },
+            },
+            interruptBefore: ["tools"],
+          }
         );
       }
     },
@@ -115,6 +130,7 @@ export function useChat({
         config: {
           ...(activeAssistant?.config || {}),
           recursion_limit: 100,
+          configurable: { ...(activeAssistant?.config?.configurable ?? {}), ...(uid ? { uid } : {}) },
         },
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }

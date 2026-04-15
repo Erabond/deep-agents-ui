@@ -36,12 +36,14 @@ export function ConfigDialog({
   const [langsmithApiKey, setLangsmithApiKey] = useState(
     initialConfig?.langsmithApiKey || ""
   );
+  const [uid, setUid] = useState(initialConfig?.uid || "");
 
   useEffect(() => {
     if (open && initialConfig) {
       setDeploymentUrl(initialConfig.deploymentUrl);
       setAssistantId(initialConfig.assistantId);
       setLangsmithApiKey(initialConfig.langsmithApiKey || "");
+      setUid(initialConfig.uid || "");
     }
   }, [open, initialConfig]);
 
@@ -55,6 +57,7 @@ export function ConfigDialog({
       deploymentUrl,
       assistantId,
       langsmithApiKey: langsmithApiKey || undefined,
+      uid: uid || undefined,
     });
     onOpenChange(false);
   };
@@ -102,6 +105,18 @@ export function ConfigDialog({
               placeholder="lsv2_pt_..."
               value={langsmithApiKey}
               onChange={(e) => setLangsmithApiKey(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="uid">
+              User ID{" "}
+              <span className="text-muted-foreground">(Optional)</span>
+            </Label>
+            <Input
+              id="uid"
+              placeholder="e.g. kevin-mead"
+              value={uid}
+              onChange={(e) => setUid(e.target.value)}
             />
           </div>
         </div>
