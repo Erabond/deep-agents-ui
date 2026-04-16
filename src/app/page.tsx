@@ -215,7 +215,8 @@ function HomePageInner({
 }
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, gmailConnected } = useAuth();
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
   if (loading) {
     return (
@@ -227,6 +228,25 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (!gmailConnected) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-full max-w-sm space-y-4 p-8 border rounded-lg text-center">
+          <h1 className="text-2xl font-semibold">Connect your Gmail</h1>
+          <p className="text-sm text-muted-foreground">
+            To use the agent you need to connect your Gmail account.
+          </p>
+          <Button
+            className="w-full"
+            onClick={() => window.location.href = `${apiBase}/auth/google?uid=${user.uid}`}
+          >
+            Connect Gmail
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
