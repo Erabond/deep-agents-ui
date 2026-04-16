@@ -237,13 +237,28 @@ function HomePageContent() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
-  // On mount, check for saved config, otherwise show config dialog
+  // On mount, load config from localStorage or auto-populate from env vars
   useEffect(() => {
     const savedConfig = getConfig();
+    const envDeploymentUrl = process.env.NEXT_PUBLIC_LANGGRAPH_DEPLOYMENT_URL;
+    const envAssistantId = process.env.NEXT_PUBLIC_LANGGRAPH_ASSISTANT_ID;
+    const envApiKey = process.env.NEXT_PUBLIC_LANGSMITH_API_KEY;
+
     if (savedConfig) {
       setConfig(savedConfig);
       if (!assistantId) {
         setAssistantId(savedConfig.assistantId);
+      }
+    } else if (envDeploymentUrl && envAssistantId) {
+      const autoConfig: StandaloneConfig = {
+        deploymentUrl: envDeploymentUrl,
+        assistantId: envAssistantId,
+        langsmithApiKey: envApiKey,
+      };
+      saveConfig(autoConfig);
+      setConfig(autoConfig);
+      if (!assistantId) {
+        setAssistantId(envAssistantId);
       }
     } else {
       setConfigDialogOpen(true);
