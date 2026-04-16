@@ -214,11 +214,8 @@ function HomePageInner({
   );
 }
 
-function HomePageContent() {
+function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const [config, setConfig] = useState<StandaloneConfig | null>(null);
-  const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [assistantId, setAssistantId] = useQueryState("assistantId");
 
   if (loading) {
     return (
@@ -231,6 +228,14 @@ function HomePageContent() {
   if (!user) {
     return <LoginPage />;
   }
+
+  return <>{children}</>;
+}
+
+function HomePageContent() {
+  const [config, setConfig] = useState<StandaloneConfig | null>(null);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [assistantId, setAssistantId] = useQueryState("assistantId");
 
   // On mount, check for saved config, otherwise show config dialog
   useEffect(() => {
@@ -311,7 +316,9 @@ export default function HomePage() {
         </div>
       }
     >
-      <HomePageContent />
+      <AuthGuard>
+        <HomePageContent />
+      </AuthGuard>
     </Suspense>
   );
 }
