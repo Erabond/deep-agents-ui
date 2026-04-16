@@ -107,18 +107,6 @@ export function ConfigDialog({
               onChange={(e) => setLangsmithApiKey(e.target.value)}
             />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="uid">
-              User ID{" "}
-              <span className="text-muted-foreground">(Optional)</span>
-            </Label>
-            <Input
-              id="uid"
-              placeholder="e.g. kevin-mead"
-              value={uid}
-              onChange={(e) => setUid(e.target.value)}
-            />
-          </div>
         </div>
         <DialogFooter>
           <Button

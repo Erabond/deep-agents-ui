@@ -4,10 +4,14 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
 import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
+import { LoginPage } from "@/app/components/LoginPage";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
-import { Settings, MessagesSquare, SquarePen } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Settings, MessagesSquare, SquarePen, LogOut } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -154,6 +158,13 @@ function HomePageInner({
               <SquarePen className="mr-2 h-4 w-4" />
               New Thread
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut(auth)}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
@@ -204,9 +215,22 @@ function HomePageInner({
 }
 
 function HomePageContent() {
+  const { user, loading } = useAuth();
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
 
   // On mount, check for saved config, otherwise show config dialog
   useEffect(() => {

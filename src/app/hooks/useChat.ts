@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
-import { getConfig } from "@/lib/config";
+import { useAuth } from "@/providers/AuthProvider";
 import { useQueryState } from "nuqs";
 
 export type StateType = {
@@ -37,7 +37,8 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
-  const uid = getConfig()?.uid;
+  const { user } = useAuth();
+  const uid = user?.uid;
 
   const stream = useStream<StateType>({
     assistantId: activeAssistant?.assistant_id || "",
