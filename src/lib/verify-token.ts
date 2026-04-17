@@ -1,23 +1,25 @@
-import * as jose from "jose";
-
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!;
-const JWKS_URL =
-  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
-
-// Cached remote JWK set — jose handles rotation automatically
-const JWKS = jose.createRemoteJWKSet(new URL(JWKS_URL));
-
 /**
- * Verifies a Firebase ID token and returns the user's uid, or null if invalid.
- * Uses Google's public JWKs — no service account required.
+ * Verifies a Firebase ID token using the Firebase Identity Toolkit REST API.
+ * Returns the user's uid on success, null on failure.
+ * More reliable in serverless environments than jose JWK fetching.
  */
 export async function verifyFirebaseToken(token: string): Promise<string | null> {
   try {
-    const { payload } = await jose.jwtVerify(token, JWKS, {
-      issuer: `https://securetoken.google.com/${PROJECT_ID}`,
-      audience: PROJECT_ID,
-    });
-    return (payload.sub as string) ?? null;
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!apiKey) return null;
+
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: token }),
+      }
+    );
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return (data.users?.[0]?.localId as string) ?? null;
   } catch {
     return null;
   }
