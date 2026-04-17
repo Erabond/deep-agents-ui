@@ -15,9 +15,11 @@ export async function GET(
   }
 
   const verifiedUid = await verifyFirebaseToken(auth.slice(7));
-  // Must be authenticated AND the token must match the requested uid
-  if (!verifiedUid || verifiedUid !== uid) {
-    return new Response("Forbidden", { status: 403 });
+  if (!verifiedUid) {
+    return Response.json({ error: "token_verification_failed" }, { status: 403 });
+  }
+  if (verifiedUid !== uid) {
+    return Response.json({ error: "uid_mismatch", verified: verifiedUid, requested: uid }, { status: 403 });
   }
 
   const upstream = await fetch(`${API_BASE_URL}/clients/${uid}`);
