@@ -1,7 +1,15 @@
 "use client";
 
-import { createContext, useContext, useMemo, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { Client } from "@langchain/langgraph-sdk";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface ClientContextValue {
   client: Client;
@@ -9,26 +17,45 @@ interface ClientContextValue {
 
 const ClientContext = createContext<ClientContextValue | null>(null);
 
-interface ClientProviderProps {
-  children: ReactNode;
-  deploymentUrl: string;
-  apiKey: string;
-}
+/**
+ * Provides a LangGraph Client that routes all requests through /api/langgraph.
+ * The Firebase ID token is added to every request as `Authorization: Bearer <token>`
+ * and automatically refreshed every 50 minutes (tokens expire after 60).
+ */
+export function ClientProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [idToken, setIdToken] = useState<string>("");
 
-export function ClientProvider({
-  children,
-  deploymentUrl,
-  apiKey,
-}: ClientProviderProps) {
-  const client = useMemo(() => {
-    return new Client({
-      apiUrl: deploymentUrl,
-      defaultHeaders: {
-        "Content-Type": "application/json",
-        "X-Api-Key": apiKey,
-      },
-    });
-  }, [deploymentUrl, apiKey]);
+  useEffect(() => {
+    if (!user) {
+      setIdToken("");
+      return;
+    }
+
+    let cancelled = false;
+
+    const refresh = async () => {
+      const token = await user.getIdToken();
+      if (!cancelled) setIdToken(token);
+    };
+
+    refresh();
+    const interval = setInterval(refresh, 50 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  const client = useMemo(
+    () =>
+      new Client({
+        apiUrl: "/api/langgraph",
+        defaultHeaders: idToken ? { Authorization: `Bearer ${idToken}` } : {},
+      }),
+    [idToken]
+  );
 
   const value = useMemo(() => ({ client }), [client]);
 
@@ -39,7 +66,6 @@ export function ClientProvider({
 
 export function useClient(): Client {
   const context = useContext(ClientContext);
-
   if (!context) {
     throw new Error("useClient must be used within a ClientProvider");
   }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
-import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
+import { StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { LoginPage } from "@/app/components/LoginPage";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Settings, MessagesSquare, SquarePen, LogOut } from "lucide-react";
+import { MessagesSquare, SquarePen, LogOut } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -49,7 +49,6 @@ function HomePageInner({
       );
 
     if (isUUID) {
-      // We should try to fetch the assistant directly with this UUID
       try {
         const data = await client.assistants.get(config.assistantId);
         setAssistant(data);
@@ -69,8 +68,6 @@ function HomePageInner({
       }
     } else {
       try {
-        // We should try to list out the assistants for this graph, and then use the default one.
-        // TODO: Paginate this search, but 100 should be enough for graph name
         const assistants = await client.assistants.search({
           graphId: config.assistantId,
           limit: 100,
@@ -136,18 +133,6 @@ function HomePageInner({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Assistant:</span>{" "}
-              {config.assistantId}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfigDialogOpen(true)}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -216,7 +201,6 @@ function HomePageInner({
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading, gmailConnected } = useAuth();
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
   if (loading) {
     return (
@@ -240,7 +224,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           </p>
           <Button
             className="w-full"
-            onClick={() => window.location.href = `${apiBase}/auth/google?uid=${user.uid}`}
+            onClick={() =>
+              (window.location.href = `/api/auth/gmail?uid=${user.uid}`)
+            }
           >
             Connect Gmail
           </Button>
@@ -253,85 +239,56 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function HomePageContent() {
-  const [config, setConfig] = useState<StandaloneConfig | null>(null);
+  const { user } = useAuth();
+  const [assistantId, setAssistantId] = useState<string | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [assistantId, setAssistantId] = useQueryState("assistantId");
+  const [assistantQueryParam, setAssistantQueryParam] =
+    useQueryState("assistantId");
 
-  // On mount, load config from localStorage or auto-populate from env vars
+  // Fetch the assistant ID from the server — keeps LANGGRAPH_ASSISTANT_ID private
   useEffect(() => {
-    const savedConfig = getConfig();
-    const envDeploymentUrl = process.env.NEXT_PUBLIC_LANGGRAPH_DEPLOYMENT_URL;
-    const envAssistantId = process.env.NEXT_PUBLIC_LANGGRAPH_ASSISTANT_ID;
-    const envApiKey = process.env.NEXT_PUBLIC_LANGSMITH_API_KEY;
+    if (!user) return;
+    let cancelled = false;
 
-    if (savedConfig) {
-      setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
-      }
-    } else if (envDeploymentUrl && envAssistantId) {
-      const autoConfig: StandaloneConfig = {
-        deploymentUrl: envDeploymentUrl,
-        assistantId: envAssistantId,
-        langsmithApiKey: envApiKey,
-      };
-      saveConfig(autoConfig);
-      setConfig(autoConfig);
-      if (!assistantId) {
-        setAssistantId(envAssistantId);
-      }
-    } else {
-      setConfigDialogOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    user.getIdToken().then((token) => {
+      fetch("/api/config", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (cancelled) return;
+          setAssistantId(data.assistantId);
+          if (!assistantQueryParam) setAssistantQueryParam(data.assistantId);
+        })
+        .catch(console.error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const handleSaveConfig = useCallback((_config: StandaloneConfig) => {
+    // Config is server-managed — no-op kept for type compatibility
   }, []);
 
-  // If config changes, update the assistantId
-  useEffect(() => {
-    if (config && !assistantId) {
-      setAssistantId(config.assistantId);
-    }
-  }, [config, assistantId, setAssistantId]);
-
-  const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
-    saveConfig(newConfig);
-    setConfig(newConfig);
-  }, []);
-
-  const langsmithApiKey =
-    config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
-
-  if (!config) {
+  if (!assistantId) {
     return (
-      <>
-        <ConfigDialog
-          open={configDialogOpen}
-          onOpenChange={setConfigDialogOpen}
-          onSave={handleSaveConfig}
-        />
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome to Standalone Chat</h1>
-            <p className="mt-2 text-muted-foreground">
-              Configure your deployment to get started
-            </p>
-            <Button
-              onClick={() => setConfigDialogOpen(true)}
-              className="mt-4"
-            >
-              Open Configuration
-            </Button>
-          </div>
-        </div>
-      </>
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
     );
   }
 
+  const config: StandaloneConfig = {
+    deploymentUrl: "/api/langgraph",
+    assistantId,
+    langsmithApiKey: "",
+  };
+
   return (
-    <ClientProvider
-      deploymentUrl={config.deploymentUrl}
-      apiKey={langsmithApiKey}
-    >
+    <ClientProvider>
       <HomePageInner
         config={config}
         configDialogOpen={configDialogOpen}

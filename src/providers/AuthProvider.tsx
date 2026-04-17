@@ -18,11 +18,12 @@ const AuthContext = createContext<AuthContextType>({
   recheckGmail: () => {},
 });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-
-async function checkGmailConnected(uid: string): Promise<boolean> {
+async function checkGmailConnected(user: User): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/clients/${uid}`);
+    const token = await user.getIdToken();
+    const res = await fetch(`/api/clients/${user.uid}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!res.ok) return false;
     const data = await res.json();
     return !!data.gmail_token;
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const recheckGmail = useCallback(async () => {
     if (!user) return;
-    const connected = await checkGmailConnected(user.uid);
+    const connected = await checkGmailConnected(user);
     setGmailConnected(connected);
   }, [user]);
 
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        const connected = await checkGmailConnected(firebaseUser.uid);
+        const connected = await checkGmailConnected(firebaseUser);
         setGmailConnected(connected);
       } else {
         setGmailConnected(false);
