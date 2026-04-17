@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
 import { StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
+import { SettingsPanel } from "@/app/components/SettingsPanel";
 import { LoginPage } from "@/app/components/LoginPage";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
@@ -11,7 +12,7 @@ import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { MessagesSquare, SquarePen, LogOut } from "lucide-react";
+import { MessagesSquare, SquarePen, LogOut, Settings } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -37,6 +38,7 @@ function HomePageInner({
   const client = useClient();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
@@ -111,6 +113,7 @@ function HomePageInner({
         onSave={handleSaveConfig}
         initialConfig={config}
       />
+      <SettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
       <div className="flex h-screen flex-col">
         <header className="flex h-16 items-center justify-between border-b border-border px-6">
           <div className="flex items-center gap-4">
@@ -142,6 +145,13 @@ function HomePageInner({
             >
               <SquarePen className="mr-2 h-4 w-4" />
               New Thread
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
