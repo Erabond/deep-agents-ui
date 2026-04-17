@@ -20,13 +20,10 @@ const AuthContext = createContext<AuthContextType>({
 
 async function checkGmailConnected(user: User): Promise<boolean> {
   try {
-    const token = await user.getIdToken();
-    const res = await fetch(`/api/clients/${user.uid}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`/api/gmail-status?uid=${user.uid}`);
     if (!res.ok) return false;
     const data = await res.json();
-    return !!data.gmail_token;
+    return !!data.connected;
   } catch {
     return false;
   }
