@@ -59,6 +59,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ client }), [client]);
 
+  if (!idToken) return null;
+
   return (
     <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
   );
