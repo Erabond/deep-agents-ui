@@ -51,7 +51,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const client = useMemo(
     () =>
       new Client({
-        apiUrl: "/api/langgraph",
+        apiUrl: `${window.location.origin}/api/langgraph`,
         defaultHeaders: idToken ? { Authorization: `Bearer ${idToken}` } : {},
       }),
     [idToken]
